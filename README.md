@@ -42,6 +42,13 @@ FROM INFORMATION_SCHEMA.TABLES;
 ```
 ![3](https://github.com/joos-net/index/blob/main/3.png)
 
+## Исправления
+```SQL
+SELECT CONCAT(ROUND(SUM(INDEX_LENGTH) / (SUM(INDEX_LENGTH)+SUM(DATA_LENGTH)) * 100), ' %') AS percent
+FROM INFORMATION_SCHEMA.TABLES;
+```
+![4](https://github.com/joos-net/index/blob/main/4.png)
+
 ---
 
 ### Задание 2
@@ -122,6 +129,32 @@ where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and
 GROUP BY c.customer_id;
 ```
 ![2](https://github.com/joos-net/index/blob/main/2.png)
+
+## Исправления
+```SQL
+CREATE INDEX inx_pay_date ON payment(payment_date);
+
+EXPLAIN ANALYZE select distinct concat(c.last_name, ' ', c.first_name), sum(p.amount)
+from payment p, rental r, customer c
+where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and c.customer_id = r.customer_id 
+GROUP BY c.customer_id;
+```
+```SQL
+-> Limit: 400 row(s)  (actual time=67..67.1 rows=391 loops=1)
+    -> Sort with duplicate removal: `concat(c.last_name, ' ', c.first_name)`, `sum(p.amount)`  (actual time=67..67 rows=391 loops=1)
+        -> Table scan on <temporary>  (actual time=66.7..66.8 rows=391 loops=1)
+            -> Aggregate using temporary table  (actual time=66.7..66.7 rows=391 loops=1)
+                -> Nested loop inner join  (cost=11265 rows=16005) (actual time=0.513..65.2 rows=642 loops=1)
+                    -> Nested loop inner join  (cost=5663 rows=16005) (actual time=0.248..26 rows=16044 loops=1)
+                        -> Table scan on c  (cost=61.2 rows=599) (actual time=0.143..0.6 rows=599 loops=1)
+                        -> Index lookup on r using idx_fk_customer_id (customer_id=c.customer_id)  (cost=6.68 rows=26.7) (actual time=0.0338..0.0402 rows=26.8 loops=599)
+                    -> Index lookup on p using inx_pay_date (payment_date=r.rental_date), with index condition: (cast(p.payment_date as date) = '2005-07-30')  (cost=0.25 rows=1) (actual time=0.00225..0.00228 rows=0.04 loops=16044)
+```
+Без индексов
+![101](https://github.com/joos-net/index/blob/main/101.png)
+
+С индексом payment_date
+![102](https://github.com/joos-net/index/blob/main/102.png)
 
 ---
 ## Дополнительные задания (со звездочкой*)
