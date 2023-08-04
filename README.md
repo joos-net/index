@@ -1,4 +1,5 @@
-# Домашнее задание к занятию "`Название занятия`" - `Фамилия и имя студента`
+# Домашнее задание к занятию "`Индексы`"
+# `Островский Евгений`
 
 
 ### Инструкция по выполнению домашнего задания
@@ -24,113 +25,127 @@
 
 ### Задание 1
 
-`Приведите ответ в свободной форме........`
+Напишите запрос к учебной базе данных, который вернёт процентное отношение общего размера всех индексов к общему размеру всех таблиц.
 
-1. `Заполните здесь этапы выполнения, если требуется ....`
-2. `Заполните здесь этапы выполнения, если требуется ....`
-3. `Заполните здесь этапы выполнения, если требуется ....`
-4. `Заполните здесь этапы выполнения, если требуется ....`
-5. `Заполните здесь этапы выполнения, если требуется ....`
-6. 
-
+Для таблицы
+```SQL
+SELECT table_name, CONCAT(ROUND(INDEX_LENGTH /DATA_LENGTH*100), ' %') AS percent
+FROM INFORMATION_SCHEMA.TABLES
+WHERE table_name = "city";
 ```
-Поле для вставки кода...
-....
-....
-....
-....
+![1](https://github.com/joos-net/index/blob/main/1.png)
+
+Для всех таблиц
+```SQL
+SELECT CONCAT(ROUND(SUM(INDEX_LENGTH) / SUM(DATA_LENGTH) * 100), ' %') AS percent
+FROM INFORMATION_SCHEMA.TABLES;
 ```
-
-`При необходимости прикрепитe сюда скриншоты
-![Название скриншота 1](ссылка на скриншот 1)`
-
+![3](https://github.com/joos-net/index/blob/main/3.png)
 
 ---
 
 ### Задание 2
 
-`Приведите ответ в свободной форме........`
+Выполните explain analyze следующего запроса:
 
-1. `Заполните здесь этапы выполнения, если требуется ....`
-2. `Заполните здесь этапы выполнения, если требуется ....`
-3. `Заполните здесь этапы выполнения, если требуется ....`
-4. `Заполните здесь этапы выполнения, если требуется ....`
-5. `Заполните здесь этапы выполнения, если требуется ....`
-6. 
-
+```SQL
+select distinct concat(c.last_name, ' ', c.first_name), sum(p.amount) over (partition by c.customer_id, f.title)
+from payment p, rental r, customer c, inventory i, film f
+where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and r.customer_id = c.customer_id and i.inventory_id = r.inventory_id
 ```
-Поле для вставки кода...
-....
-....
-....
-....
+- перечислите узкие места;
+- оптимизируйте запрос: внесите корректировки по использованию операторов, при необходимости добавьте индексы.
+
+```SQL
+-> Limit: 400 row(s)  (cost=0..0 rows=0) (actual time=7312..7312 rows=391 loops=1)
+    -> Table scan on <temporary>  (cost=2.5..2.5 rows=0) (actual time=7312..7312 rows=391 loops=1)
+        -> Temporary table with deduplication  (cost=0..0 rows=0) (actual time=7312..7312 rows=391 loops=1)
+            -> Window aggregate with buffering: sum(payment.amount) OVER (PARTITION BY c.customer_id,f.title )   (actual time=3014..7033 rows=642000 loops=1)
+                -> Sort: c.customer_id, f.title  (actual time=3014..3139 rows=642000 loops=1)
+                    -> Stream results  (cost=21.2e+6 rows=16e+6) (actual time=0.626..2102 rows=642000 loops=1)
+                        -> Nested loop inner join  (cost=21.2e+6 rows=16e+6) (actual time=0.619..1743 rows=642000 loops=1)
+                            -> Nested loop inner join  (cost=19.6e+6 rows=16e+6) (actual time=0.614..1521 rows=642000 loops=1)
+                                -> Nested loop inner join  (cost=18e+6 rows=16e+6) (actual time=0.607..1253 rows=642000 loops=1)
+                                    -> Inner hash join (no condition)  (cost=1.58e+6 rows=15.8e+6) (actual time=0.589..68.4 rows=634000 loops=1)
+                                        -> Filter: (cast(p.payment_date as date) = '2005-07-30')  (cost=1.65 rows=15813) (actual time=0.0555..8.8 rows=634 loops=1)
+                                            -> Table scan on p  (cost=1.65 rows=15813) (actual time=0.0404..5.82 rows=16044 loops=1)
+                                        -> Hash
+                                            -> Covering index scan on f using idx_title  (cost=111 rows=1000) (actual time=0.0579..0.392 rows=1000 loops=1)
+                                    -> Covering index lookup on r using rental_date (rental_date=p.payment_date)  (cost=0.938 rows=1.01) (actual time=0.00114..0.00165 rows=1.01 loops=634000)
+                                -> Single-row index lookup on c using PRIMARY (customer_id=r.customer_id)  (cost=250e-6 rows=1) (actual time=191e-6..220e-6 rows=1 loops=642000)
+                            -> Single-row covering index lookup on i using PRIMARY (inventory_id=r.inventory_id)  (cost=250e-6 rows=1) (actual time=149e-6..178e-6 rows=1 loops=642000)
 ```
-
-`При необходимости прикрепитe сюда скриншоты
-![Название скриншота 2](ссылка на скриншот 2)`
-
-
----
-
-### Задание 3
-
-`Приведите ответ в свободной форме........`
-
-1. `Заполните здесь этапы выполнения, если требуется ....`
-2. `Заполните здесь этапы выполнения, если требуется ....`
-3. `Заполните здесь этапы выполнения, если требуется ....`
-4. `Заполните здесь этапы выполнения, если требуется ....`
-5. `Заполните здесь этапы выполнения, если требуется ....`
-6. 
-
+В выводе видим что мы сортируем по 2-м большим таблицам и проходим по большому количеству строк. Так как дополнительная сортировка по названию фильмов нигде больше не используется, то уберем ее и таблицу film. Еще отсутствует необходимость в таблице inventory и проверке условия inventory_id
+```SQL
+EXPLAIN ANALYZE select distinct concat(c.last_name, ' ', c.first_name), sum(p.amount) over (partition by c.customer_id)
+from payment p, rental r, customer c
+where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and r.customer_id = c.customer_id
 ```
-Поле для вставки кода...
-....
-....
-....
-....
+```SQL
+-> Limit: 400 row(s)  (cost=0..0 rows=0) (actual time=14.9..15.1 rows=391 loops=1)
+    -> Table scan on <temporary>  (cost=2.5..2.5 rows=0) (actual time=14.9..15 rows=391 loops=1)
+        -> Temporary table with deduplication  (cost=0..0 rows=0) (actual time=14.9..14.9 rows=391 loops=1)
+            -> Window aggregate with buffering: sum(payment.amount) OVER (PARTITION BY c.customer_id )   (actual time=13.2..14.6 rows=642 loops=1)
+                -> Sort: c.customer_id  (actual time=13.1..13.2 rows=642 loops=1)
+                    -> Stream results  (cost=23632 rows=16003) (actual time=0.127..12.9 rows=642 loops=1)
+                        -> Nested loop inner join  (cost=23632 rows=16003) (actual time=0.12..12.4 rows=642 loops=1)
+                            -> Nested loop inner join  (cost=18031 rows=16003) (actual time=0.11..11.4 rows=642 loops=1)
+                                -> Filter: (cast(p.payment_date as date) = '2005-07-30')  (cost=1606 rows=15813) (actual time=0.0887..9.33 rows=634 loops=1)
+                                    -> Table scan on p  (cost=1606 rows=15813) (actual time=0.0688..6.96 rows=16044 loops=1)
+                                -> Covering index lookup on r using rental_date (rental_date=p.payment_date)  (cost=0.938 rows=1.01) (actual time=0.0021..0.00286 rows=1.01 loops=634)
+                            -> Single-row index lookup on c using PRIMARY (customer_id=r.customer_id)  (cost=0.25 rows=1) (actual time=0.00126..0.0013 rows=1 loops=642)
 ```
-
-`При необходимости прикрепитe сюда скриншоты
-![Название скриншота](ссылка на скриншот)`
-
-### Задание 4
-
-`Приведите ответ в свободной форме........`
-
-1. `Заполните здесь этапы выполнения, если требуется ....`
-2. `Заполните здесь этапы выполнения, если требуется ....`
-3. `Заполните здесь этапы выполнения, если требуется ....`
-4. `Заполните здесь этапы выполнения, если требуется ....`
-5. `Заполните здесь этапы выполнения, если требуется ....`
-6. 
-
+Основное назначение OVER PARTITION BY - это группировка по значению для sum, такая группировка оставляет все строки, GROUP BY сокращает количество строк в запросе с помощью их группировки, попробуем использовать GROUP BY
+```SQL
+EXPLAIN ANALYZE select distinct concat(c.last_name, ' ', c.first_name), sum(p.amount)
+from payment p, rental r, customer c
+where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and r.customer_id = c.customer_id
+GROUP BY c.customer_id;
 ```
-Поле для вставки кода...
-....
-....
-....
-....
+```SQL
+-> Limit: 400 row(s)  (actual time=12.1..12.1 rows=391 loops=1)
+    -> Sort with duplicate removal: `concat(c.last_name, ' ', c.first_name)`, `sum(p.amount)`  (actual time=12.1..12.1 rows=391 loops=1)
+        -> Table scan on <temporary>  (actual time=11.8..11.8 rows=391 loops=1)
+            -> Aggregate using temporary table  (actual time=11.8..11.8 rows=391 loops=1)
+                -> Nested loop inner join  (cost=23632 rows=16003) (actual time=0.0901..10.7 rows=642 loops=1)
+                    -> Nested loop inner join  (cost=18031 rows=16003) (actual time=0.0839..9.72 rows=642 loops=1)
+                        -> Filter: (cast(p.payment_date as date) = '2005-07-30')  (cost=1606 rows=15813) (actual time=0.0682..7.8 rows=634 loops=1)
+                            -> Table scan on p  (cost=1606 rows=15813) (actual time=0.0551..5.83 rows=16044 loops=1)
+                        -> Covering index lookup on r using rental_date (rental_date=p.payment_date)  (cost=0.938 rows=1.01) (actual time=0.00198..0.00275 rows=1.01 loops=634)
+                    -> Single-row index lookup on c using PRIMARY (customer_id=r.customer_id)  (cost=0.25 rows=1) (actual time=0.00123..0.00127 rows=1 loops=642)
 ```
-
-`При необходимости прикрепитe сюда скриншоты
-![Название скриншота](ссылка на скриншот)`
+Получаем запрос
+```SQL
+select distinct concat(c.last_name, ' ', c.first_name), sum(p.amount)
+from payment p, rental r, customer c
+where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and r.customer_id = c.customer_id
+GROUP BY c.customer_id;
+```
+![2](https://github.com/joos-net/index/blob/main/2.png)
 
 ---
 ## Дополнительные задания (со звездочкой*)
 
 Эти задания дополнительные (не обязательные к выполнению) и никак не повлияют на получение вами зачета по этому домашнему заданию. Вы можете их выполнить, если хотите глубже и/или шире разобраться в материале.
 
-### Задание 5
+### Задание 3
 
-`Приведите ответ в свободной форме........`
+Самостоятельно изучите, какие типы индексов используются в PostgreSQL. Перечислите те индексы, которые используются в PostgreSQL, а в MySQL — нет.
 
-1. `Заполните здесь этапы выполнения, если требуется ....`
-2. `Заполните здесь этапы выполнения, если требуется ....`
-3. `Заполните здесь этапы выполнения, если требуется ....`
-4. `Заполните здесь этапы выполнения, если требуется ....`
-5. `Заполните здесь этапы выполнения, если требуется ....`
-6. 
+Приведите ответ в свободной форме.
 
-`При необходимости прикрепитe сюда скриншоты
-![Название скриншота](ссылка на скриншот)`
+В PostgreSQL используются следующие типы индексов - B-Tree, Hash, GiST, SP-GiST, GIN и BRIN
+- B-TREE — древовидная структура данных, популярная для использования в индексах БД
+- HASH-индексы предполагают хранение не самих значений, а их хэшей, благодаря чему уменьшается размер и увеличивается скорость обработки индексов из больших полей.
+- GiST - Generalized Search Tree, Обобщенное поисковое дерево — структура индекса, которая является обобщенной разновидностью R-tree. GiST представляет собой сбалансированное (по высоте) дерево, концевые узлы которого содержат пары (key, rid), где key — ключ, а rid — указатель на соответствующую запись на странице данных
+- SP-GiST - Space-Partitioned GiST (GiST с разбиением пространства). SP-GiST поддерживает деревья поиска с разбиением, что облегчает разработку широкого спектра различных несбалансированных структур данных.
+- GIN - Generalized INverted index — реализация обратного индекса, используемая в СУБД PostgreSQL, в частности, для полнотекстового поиска и поиска по содержимому полей типа JSON
+- BRIN - Block Range Index — техника индексации данных, предназначенная для обработки больших таблиц, в которых значение индексируемого столбца имеет некоторую естественную корреляцию с физическим положением строки в таблице
+
+В MySQL
+- B-TREE
+- R-TREE
+- INVERTED
+- HASH
+
+В MySQL не используются следующие типы индексов - SP-GiST и BRIN
