@@ -135,26 +135,20 @@ GROUP BY c.customer_id;
 CREATE INDEX inx_pay_date ON payment(payment_date);
 
 EXPLAIN ANALYZE select distinct concat(c.last_name, ' ', c.first_name), sum(p.amount)
-from payment p, rental r, customer c
-where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and c.customer_id = r.customer_id 
-GROUP BY c.customer_id;
+from payment p, customer c
+where p.payment_date >= '2005-07-30' and payment_date < '2005-07-31' and p.customer_id = c.customer_id 
+GROUP BY p.customer_id;
 ```
 ```SQL
--> Limit: 400 row(s)  (actual time=67..67.1 rows=391 loops=1)
-    -> Sort with duplicate removal: `concat(c.last_name, ' ', c.first_name)`, `sum(p.amount)`  (actual time=67..67 rows=391 loops=1)
-        -> Table scan on <temporary>  (actual time=66.7..66.8 rows=391 loops=1)
-            -> Aggregate using temporary table  (actual time=66.7..66.7 rows=391 loops=1)
-                -> Nested loop inner join  (cost=11265 rows=16005) (actual time=0.513..65.2 rows=642 loops=1)
-                    -> Nested loop inner join  (cost=5663 rows=16005) (actual time=0.248..26 rows=16044 loops=1)
-                        -> Table scan on c  (cost=61.2 rows=599) (actual time=0.143..0.6 rows=599 loops=1)
-                        -> Index lookup on r using idx_fk_customer_id (customer_id=c.customer_id)  (cost=6.68 rows=26.7) (actual time=0.0338..0.0402 rows=26.8 loops=599)
-                    -> Index lookup on p using inx_pay_date (payment_date=r.rental_date), with index condition: (cast(p.payment_date as date) = '2005-07-30')  (cost=0.25 rows=1) (actual time=0.00225..0.00228 rows=0.04 loops=16044)
+-> Limit: 400 row(s)  (actual time=4.11..4.2 rows=391 loops=1)
+    -> Sort with duplicate removal: `concat(c.last_name, ' ', c.first_name)`, `sum(p.amount)`  (actual time=4.11..4.16 rows=391 loops=1)
+        -> Table scan on <temporary>  (actual time=3.72..3.8 rows=391 loops=1)
+            -> Aggregate using temporary table  (actual time=3.72..3.72 rows=391 loops=1)
+                -> Nested loop inner join  (cost=507 rows=634) (actual time=0.05..2.91 rows=634 loops=1)
+                    -> Index range scan on p using inx_pay_date over ('2005-07-30 00:00:00' <= payment_date < '2005-07-31 00:00:00'), with index condition: ((p.payment_date >= TIMESTAMP'2005-07-30 00:00:00') and (p.payment_date < TIMESTAMP'2005-07-31 00:00:00'))  (cost=286 rows=634) (actual time=0.0385..1.7 rows=634 loops=1)
+                    -> Single-row index lookup on c using PRIMARY (customer_id=p.customer_id)  (cost=0.25 rows=1) (actual time=0.00163..0.00167 rows=1 loops=634)
 ```
-Без индексов
-![101](https://github.com/joos-net/index/blob/main/101.png)
-
-С индексом payment_date
-![102](https://github.com/joos-net/index/blob/main/102.png)
+![1001](https://github.com/joos-net/index/blob/main/1001.png)
 
 ---
 ## Дополнительные задания (со звездочкой*)
