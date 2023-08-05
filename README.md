@@ -136,7 +136,7 @@ CREATE INDEX inx_pay_date ON payment(payment_date);
 
 EXPLAIN ANALYZE select distinct concat(c.last_name, ' ', c.first_name), sum(p.amount)
 from payment p, customer c
-where p.payment_date >= '2005-07-30' and payment_date < '2005-07-31' and p.customer_id = c.customer_id 
+where payment_date >= '2005-07-30' and payment_date < '2005-07-31' and p.customer_id = c.customer_id 
 GROUP BY p.customer_id;
 ```
 ```SQL
